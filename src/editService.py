@@ -4,7 +4,7 @@ import openai
 app = Flask(__name__)
 
 # Load OpenAI API key
-openai.api_key = "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"
+openai.api_key = "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"
 
 @app.route('/edit')
 def edit():
