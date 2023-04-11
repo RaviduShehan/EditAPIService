@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 import openai
+import os
 
 app = Flask(__name__)
 
 # Load OpenAI API key
-openai.api_key = "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"
+openai.api_key = os.environ.get('OPENAI_API_KEY')
 
 @app.route('/edit')
 def edit():
