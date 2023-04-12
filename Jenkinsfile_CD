@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+    environment {
+        dockerImageName = "shehan97105/editservice"
+        dockerImage = null
+    }
+    stages{
+        stage('Deploy to Dev Enviornment') {
+                steps {
+                    script {
+                         kubernetesDeploy(configs: 'editdev.yml', kubeconfigId:'kubernetesconfigpwd')
+                        }
+                    }
+                }
+        stage('Deploy to Test Enviornment') {
+                steps {
+                    script {
+                         kubernetesDeploy(configs: 'edittest.yml', kubeconfigId:'kubernetesconfigpwd')
+                        }
+                }
+        }
+        stage('Deploy to Prod Enviornment') {
+                steps {
+                    script {
+                         kubernetesDeploy(configs: 'editprod.yml', kubeconfigId:'kubernetesconfigpwd')
+                        }
+                    }
+        }
+    }
+}
