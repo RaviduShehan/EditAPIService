@@ -1,30 +1,87 @@
+def readManifestFile(file) {
+    return readFile(file).trim()
+}
+
 pipeline {
     agent any
     environment {
-        dockerImageName = "shehan97105/editservice"
-        dockerImage = null
+        DOCKERIMAGE = "${params.DOCKER_IMAGE_NAME}"
+        kubeconfigId = "${params.KUBECONFIG_ID}"
+
+        gkeClusterName = "openai-api-cluster"
+        gkeZone = "us-central1-c"
+        gkeCredentialsId = "apiservicesauth"
+        NAMESPACE_ID="dev"
+        DEPLOYMENT_ID="editserviceapi"
     }
     stages{
-        stage('Deploy to Dev Enviornment') {
-                steps {
-                    script {
-                         kubernetesDeploy(configs: 'editdev.yml', kubeconfigId:'kubernetesconfigpwd')
-                        }
-                    }
+        stage('Get docker Image'){
+            steps {
+                script {
+                    echo "Docker image name: ${DOCKERIMAGE}"
+                    echo "Namespace: ${NAMESPACE_ID}"
+                    echo "DEPLOYMENT_ID: ${DEPLOYMENT_ID}"
                 }
-        stage('Deploy to Test Enviornment') {
-                steps {
-                    script {
-                         kubernetesDeploy(configs: 'edittest.yml', kubeconfigId:'kubernetesconfigpwd')
-                        }
-                }
+            }
         }
-        stage('Deploy to Prod Enviornment') {
-                steps {
-                    script {
-                         kubernetesDeploy(configs: 'editprod.yml', kubeconfigId:'kubernetesconfigpwd')
-                        }
-                    }
+        stage('Replace values in manifest file') {
+            steps {
+                script {
+                    def manifest = readManifestFile('edit.yml')
+                    manifest = manifest.replaceAll('DEPLOYMENT_NAME', "${DEPLOYMENT_ID}")
+                    manifest = manifest.replaceAll('NAMESPACE', "${NAMESPACE_ID}")
+                    manifest = manifest.replaceAll('dockerImageName',"${DOCKERIMAGE}")
+                    writeFile file: 'edit.yml', text: manifest
+                }
+            }
+        }
+        stage('Deploy to Dev Environment') {
+            when {
+                expression { NAMESPACE_ID == 'dev' }
+            }
+            steps {
+                echo "Deploy to Dev Env"
+                step([
+                    $class: 'KubernetesEngineBuilder',
+                    projectId: 'apiservices-384122',
+                    credentialsId: gkeCredentialsId,
+                    clusterName: gkeClusterName,
+                    location: gkeZone,
+                    manifestPattern: 'edit.yml'
+                ])
+            }
+        }
+        stage('Deploy to Test Environment') {
+            when {
+                expression { NAMESPACE_ID == 'test' }
+            }
+            steps {
+                echo "Deploy to Test Env"
+                step([
+                    $class: 'KubernetesEngineBuilder',
+                    projectId: 'apiservices-384122',
+                    credentialsId: gkeCredentialsId,
+                    clusterName: gkeClusterName,
+                    location: gkeZone,
+                    manifestPattern: 'edit.yml'
+                ])
+            }
+        }
+        stage('Deploy to Prod Environment') {
+            when {
+                expression { NAMESPACE_ID == 'prod' }
+            }
+            steps {
+                echo "Deploy to Prod Env"
+                step([
+                    $class: 'KubernetesEngineBuilder',
+                    projectId: 'apiservices-384122',
+                    credentialsId: gkeCredentialsId,
+                    clusterName: gkeClusterName,
+                    location: gkeZone,
+                    manifestPattern: 'edit.yml'
+                ])
+            }
         }
     }
 }
